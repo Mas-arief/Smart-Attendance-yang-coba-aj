@@ -80,28 +80,42 @@ Absensi melalui face recognition
 Absensi manual yang diinput oleh dosen/admin
 - Field: `diinput_oleh` untuk tracking siapa yang input
 
-### 5. Stored Procedures
+### 5. Stored Procedures (v2.0)
+
+Database dilengkapi dengan stored procedures untuk operasi kompleks dengan validasi dan error handling.
 
 #### `sp_register_face`
-Mendaftarkan data wajah mahasiswa
-```sql
-CALL sp_register_face(p_id_mahasiswa, p_face_encoding, p_model_version, p_quality_score);
-```
+Mendaftarkan/update data wajah mahasiswa dengan validasi
+- Validasi keberadaan mahasiswa
+- Update otomatis jika sudah terdaftar
+- Transaction support dengan rollback
+- Output: status dan message
 
 #### `sp_catat_absensi_wajah`
-Mencatat absensi melalui face recognition dengan validasi jadwal dan waktu
-```sql
-CALL sp_catat_absensi_wajah(
-  p_id_mahasiswa,
-  p_id_jadwal,
-  p_tanggal,
-  p_jam_absen,
-  p_confidence,
-  p_camera_id,
-  @status,
-  @message
-);
-```
+Mencatat absensi via face recognition dengan validasi komprehensif
+- ✅ Validasi confidence score (minimum 85%)
+- ✅ Validasi jadwal dan hari kuliah
+- ✅ Cek enrollment mahasiswa
+- ✅ Validasi waktu absensi (30 menit sebelum s/d jam selesai)
+- ✅ Toleransi keterlambatan 15 menit
+- ✅ Prevent duplikasi absensi
+- ✅ Auto-logging detection
+
+#### `sp_get_jadwal_hari_ini`
+Mendapatkan jadwal kuliah mahasiswa untuk tanggal tertentu dengan status absensi
+
+#### `sp_get_rekap_kehadiran_mahasiswa`
+Mendapatkan rekap kehadiran (summary atau detail per mata kuliah)
+
+#### `sp_update_status_absensi`
+Update status absensi manual dengan audit trail
+
+#### `sp_delete_face_data`
+Hapus data wajah untuk re-registrasi
+
+**📖 Dokumentasi lengkap:** Lihat [STORED_PROCEDURES.md](STORED_PROCEDURES.md)
+
+**🧪 Testing:** Jalankan `test_procedures.sql` untuk testing semua procedures
 
 ### 6. Views
 
@@ -133,7 +147,27 @@ View rekap kehadiran mahasiswa per mata kuliah dengan persentase
    mysql -u root -p sistem_absensi_face < database/sistem_absensi_face.sql
    ```
 
-### Metode 2: Manual via Migrations (Legacy)
+### Metode 2: Install Stored Procedures (v2.0 - Enhanced)
+
+Untuk menggunakan stored procedures versi terbaru dengan validasi lengkap:
+
+**Via MySQL CLI:**
+```bash
+mysql -u root -p sistem_absensi_face < database/stored_procedures.sql
+```
+
+**Via phpMyAdmin:**
+1. Pilih database `sistem_absensi_face`
+2. Klik tab "SQL"
+3. Copy-paste isi file `stored_procedures.sql`
+4. Klik "Go"
+
+**Verifikasi instalasi:**
+```sql
+SHOW PROCEDURE STATUS WHERE Db = 'sistem_absensi_face';
+```
+
+### Metode 3: Manual via Migrations (Legacy)
 
 Jika ingin menggunakan file migration yang ada di folder `migrations/`:
 
@@ -253,10 +287,23 @@ users
 
 ## Changelog
 
+### Version 2.0 (2025-12-30)
+- **Enhanced stored procedures** with comprehensive validation
+  - sp_register_face: Added validation and update existing support
+  - sp_catat_absensi_wajah: Added 7+ validation rules
+  - sp_get_jadwal_hari_ini: New procedure for daily schedule
+  - sp_get_rekap_kehadiran_mahasiswa: New procedure for attendance summary
+  - sp_update_status_absensi: New procedure with audit trail
+  - sp_delete_face_data: New procedure for re-registration
+- **Transaction support** with automatic rollback on errors
+- **Better error handling** with descriptive messages
+- **Detailed documentation** (STORED_PROCEDURES.md)
+- **Test suite** (test_procedures.sql)
+
 ### Version 1.0 (2025-12-24)
 - Initial database schema
 - 15 tables with complete relationships
-- 2 stored procedures for face registration and attendance
+- 2 basic stored procedures for face registration and attendance
 - 2 views for reporting
 - Sample data for testing
 
