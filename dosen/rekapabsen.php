@@ -329,7 +329,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] != 'dosen') {
 
 <body>
     <!-- Sidebar & Navbar -->
-    <!-- <?php include 'navside.php'; ?> -->
+    <?php include 'navside.php'; ?>
 
     <!-- Konten Utama -->
     <div class="main-content">
@@ -343,7 +343,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] != 'dosen') {
                         <option value="">-- Pilih Mahasiswa --</option>
                         <?php
                         include '../koneksi.php';
-                        $q = mysqli_query($conn, "SELECT nim, nama_mahasiswa FROM mahasiswa WHERE id_user IS NOT NULL ORDER BY nama_mahasiswa ASC");
+                        $q = mysqli_query($conn, "SELECT nim, nama_mahasiswa FROM mahasiswa ORDER BY nama_mahasiswa ASC");
                         while ($m = mysqli_fetch_assoc($q)) {
                             echo '<option value="' . htmlspecialchars($m['nim']) . '">' . htmlspecialchars($m['nim']) . ' - ' . htmlspecialchars($m['nama_mahasiswa']) . '</option>';
                         }
@@ -354,10 +354,10 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] != 'dosen') {
                 <div class="filter-group">
                     <label for="tahun"><i class="fa-solid fa-calendar"></i> Tahun Ajaran</label>
                     <select id="tahun" onchange="loadStudentData()">
-                        <option>2024/2025 Ganjil</option>
-                        <option>2024/2025 Genap</option>
-                        <option>2023/2024 Ganjil</option>
-                        <option>2023/2024 Genap</option>
+                        <option value="1">2024/2025 Ganjil</option>
+                        <option value="2">2024/2025 Genap</option>
+                        <option value="3">2023/2024 Ganjil</option>
+                        <option value="4">2023/2024 Genap</option>
                     </select>
                 </div>
 
@@ -365,9 +365,12 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] != 'dosen') {
                     <label for="matkul"><i class="fa-solid fa-book"></i> Mata Kuliah</label>
                     <select id="matkul" onchange="filterMatkul()">
                         <option value="">Semua Mata Kuliah</option>
-                        <option value="IF101">IF101 - Pengantar Proyek Perangkat Lunak</option>
-                        <option value="IF102">IF102 - Pengantar Teknologi Informasi</option>
-                        <option value="IF103">IF103 - Dasar Pemrograman Web</option>
+                        <?php
+                        $qmk = mysqli_query($conn, "SELECT kode_mk, nama_mk FROM matakuliah ORDER BY kode_mk ASC");
+                        while ($mk = mysqli_fetch_assoc($qmk)) {
+                            echo '<option value="' . htmlspecialchars($mk['kode_mk']) . '">' . htmlspecialchars($mk['kode_mk']) . ' - ' . htmlspecialchars($mk['nama_mk']) . '</option>';
+                        }
+                        ?>
                     </select>
                 </div>
             </div>
@@ -387,7 +390,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] != 'dosen') {
                 </div>
                 <div class="info-card">
                     <h4>Program Studi</h4>
-                    <p id="studentProdi">Teknik Informatika</p>
+                    <p id="studentProdi">-</p>
                 </div>
             </div>
         </div>
@@ -466,9 +469,9 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] != 'dosen') {
     <script>
         async function loadStudentData() {
             const selectMhs = document.getElementById('mahasiswa');
-            const selectedValue = selectMhs.value;
+            const selectedNim = selectMhs.value;
 
-            if (!selectedValue) {
+            if (!selectedNim) {
                 document.getElementById('studentInfoContainer').style.display = 'none';
                 document.getElementById('summaryContainer').style.display = 'none';
                 document.getElementById('attendanceContainer').style.display = 'none';
@@ -476,26 +479,38 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] != 'dosen') {
             }
 
             // Ambil info mahasiswa
-            const res = await fetch('../admin/get_mahasiswa.php?id=' + encodeURIComponent(selectedValue));
-            const mhs = await res.json();
-            if (!mhs || mhs.status !== 'success') return;
+            try {
+                const res = await fetch('get_mahasiswa.php?nim=' + encodeURIComponent(selectedNim));
+                const mhs = await res.json();
 
-            document.getElementById('studentNIM').textContent = mhs.nim;
-            document.getElementById('studentName').textContent = mhs.nama;
-            document.getElementById('studentProdi').textContent = mhs.prodi || '-';
-            document.getElementById('studentInfoContainer').style.display = 'block';
+                if (mhs.status === 'success') {
+                    document.getElementById('studentNIM').textContent = mhs.nim;
+                    document.getElementById('studentName').textContent = mhs.nama;
+                    document.getElementById('studentProdi').textContent = mhs.prodi || '-';
+                    document.getElementById('studentInfoContainer').style.display = 'block';
 
-            // Ambil rekap absensi dari backend
-            const tahun = document.getElementById('tahun').value;
-            const matkul = document.getElementById('matkul').value;
-            const rekapRes = await fetch('get_rekap.php?nim=' + encodeURIComponent(mhs.nim) + '&tahun=' + encodeURIComponent(tahun) + '&matkul=' + encodeURIComponent(matkul));
-            const rekap = await rekapRes.json();
-            if (!rekap || !rekap.courses) return;
+                    // Ambil rekap absensi dari backend
+                    const tahun = document.getElementById('tahun').value;
+                    const matkul = document.getElementById('matkul').value;
 
-            calculateStatistics(rekap.courses);
-            displayTable(rekap.courses);
-            document.getElementById('summaryContainer').style.display = 'block';
-            document.getElementById('attendanceContainer').style.display = 'block';
+                    const rekapRes = await fetch('get_rekap.php?nim=' + encodeURIComponent(selectedNim) +
+                        '&tahun=' + encodeURIComponent(tahun) +
+                        '&matkul=' + encodeURIComponent(matkul));
+                    const rekap = await rekapRes.json();
+
+                    if (rekap && rekap.courses) {
+                        calculateStatistics(rekap.courses);
+                        displayTable(rekap.courses);
+                        document.getElementById('summaryContainer').style.display = 'block';
+                        document.getElementById('attendanceContainer').style.display = 'block';
+                    }
+                } else {
+                    alert('Data mahasiswa tidak ditemukan');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat memuat data');
+            }
         }
 
         function calculateStatistics(courses) {
@@ -507,11 +522,13 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] != 'dosen') {
 
             courses.forEach(course => {
                 (course.kehadiran || []).forEach(status => {
-                    totalPertemuan++;
-                    if (status === 'Hadir') totalHadir++;
-                    else if (status === 'Izin') totalIzin++;
-                    else if (status === 'Sakit') totalSakit++;
-                    else if (status === 'Alfa') totalAlfa++;
+                    if (status && status !== '-') {
+                        totalPertemuan++;
+                        if (status === 'Hadir') totalHadir++;
+                        else if (status === 'Izin') totalIzin++;
+                        else if (status === 'Sakit') totalSakit++;
+                        else if (status === 'Alfa') totalAlfa++;
+                    }
                 });
             });
 
@@ -530,26 +547,38 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] != 'dosen') {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
 
+            if (!courses || courses.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;color:#888;">Tidak ada data kehadiran</td></tr>';
+                return;
+            }
+
             courses.forEach(course => {
                 const row = document.createElement('tr');
                 row.setAttribute('data-kode', course.kode);
 
                 let html = `
-                    <td><strong>${course.kode}</strong></td>
-                    <td class="kiri">${course.matkul}</td>
-                    <td>${course.jenis}</td>
+                    <td><strong>${course.kode || '-'}</strong></td>
+                    <td class="kiri">${course.matkul || '-'}</td>
+                    <td>${course.jenis || '-'}</td>
                 `;
 
-                (course.kehadiran || []).forEach(status => {
+                // Loop 14 minggu
+                for (let i = 1; i <= 14; i++) {
+                    const status = course.kehadiran ? course.kehadiran[i] || '-' : '-';
                     const statusClass = status.toLowerCase();
                     const icon = {
-                        'Hadir': 'fa-check',
-                        'Izin': 'fa-info',
-                        'Sakit': 'fa-notes-medical',
-                        'Alfa': 'fa-xmark'
-                    } [status];
-                    html += `<td><span class="status ${statusClass}"><i class="fa-solid ${icon}"></i> ${status}</span></td>`;
-                });
+                        'hadir': 'fa-check',
+                        'izin': 'fa-info',
+                        'sakit': 'fa-notes-medical',
+                        'alfa': 'fa-xmark'
+                    } [statusClass] || '';
+
+                    if (status !== '-') {
+                        html += `<td><span class="status ${statusClass}"><i class="fa-solid ${icon}"></i> ${status}</span></td>`;
+                    } else {
+                        html += `<td>-</td>`;
+                    }
+                }
 
                 row.innerHTML = html;
                 tbody.appendChild(row);
@@ -570,7 +599,18 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] != 'dosen') {
         }
 
         function exportData() {
-            alert('Fitur export akan mengunduh data kehadiran dalam format Excel/CSV');
+            const nim = document.getElementById('mahasiswa').value;
+            const tahun = document.getElementById('tahun').value;
+            const matkul = document.getElementById('matkul').value;
+
+            if (!nim) {
+                alert('Pilih mahasiswa terlebih dahulu');
+                return;
+            }
+
+            window.open('../admin/export_rekap.php?nim=' + encodeURIComponent(nim) +
+                '&tahun=' + encodeURIComponent(tahun) +
+                '&matkul=' + encodeURIComponent(matkul), '_blank');
         }
     </script>
 

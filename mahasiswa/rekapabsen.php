@@ -9,33 +9,36 @@ include '../koneksi.php';
 $nim = $_SESSION['username'];
 
 // Ambil data rekap absensi dari database
-$query = "SELECT mk.kode_mk, mk.nama_mk, mk.jenis, k.status, k.tanggal
+// PERBAIKAN: Menggunakan id_mk bukan id_matkul, dan kode_mk dari kehadiran
+$query = "SELECT mk.kode_mk, mk.nama_mk, mk.jenis, k.status, k.tanggal, k.minggu
           FROM kehadiran k
-          JOIN jadwal_ruangan j ON k.id_jadwal = j.id_jadwal
-          JOIN matakuliah mk ON j.id_matkul = mk.id_matkul
+          LEFT JOIN jadwal_ruangan j ON k.id_jadwal = j.id_jadwal
+          LEFT JOIN matakuliah mk ON k.kode_mk = mk.kode_mk
           JOIN mahasiswa m ON k.id_mahasiswa = m.id_mahasiswa
           WHERE m.nim = '$nim'
-          ORDER BY mk.kode_mk, k.tanggal ASC";
+          ORDER BY mk.kode_mk, k.minggu ASC";
 $result = mysqli_query($conn, $query);
 
+// Cek error query
+if (!$result) {
+    die("Query Error: " . mysqli_error($conn));
+}
 
 $rekap = [];
-$max_weeks = 0;
+$max_weeks = 14; // Default 14 minggu
 while ($row = mysqli_fetch_assoc($result)) {
-    $kode = $row['kode_mk'];
+    $kode = $row['kode_mk'] ?? 'UNKNOWN';
     if (!isset($rekap[$kode])) {
         $rekap[$kode] = [
-            'nama_mk' => $row['nama_mk'],
-            'jenis' => $row['jenis'],
-            'kehadiran' => []
+            'nama_mk' => $row['nama_mk'] ?? '-',
+            'jenis' => $row['jenis'] ?? '-',
+            'kehadiran' => array_fill(1, 14, '-') // Inisialisasi 14 minggu dengan '-'
         ];
     }
-    $rekap[$kode]['kehadiran'][] = [
-        'status' => $row['status'],
-        'tanggal' => $row['tanggal']
-    ];
-    if (count($rekap[$kode]['kehadiran']) > $max_weeks) {
-        $max_weeks = count($rekap[$kode]['kehadiran']);
+    // Masukkan status ke minggu yang sesuai
+    $minggu = intval($row['minggu'] ?? 0);
+    if ($minggu >= 1 && $minggu <= 14) {
+        $rekap[$kode]['kehadiran'][$minggu] = $row['status'];
     }
 }
 ?>
@@ -66,21 +69,27 @@ while ($row = mysqli_fetch_assoc($result)) {
         }
 
         .main-content {
-            <thead><tr><th style="min-width: 100px;">KODE MK</th><th class="kiri" style="min-width: 250px;">MATA KULIAH</th><th style="min-width: 150px;">JENIS</th><?php for ($w = 1; $w <= $max_weeks; $w++): ?><th class="week-header">W<?= $w ?></th><?php endfor; ?></tr></thead><tbody><?php foreach ($rekap as $kode => $data): ?><tr><td class="kode-mk"><?= htmlspecialchars($kode) ?></td><td class="kiri"><?= htmlspecialchars($data['nama_mk']) ?></td><td><?= htmlspecialchars($data['jenis']) ?></td><?php
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    for ($w = 0; $w < $max_weeks; $w++) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        if (isset($data['kehadiran'][$w])) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            $status = $data['kehadiran'][$w]['status'];
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            $badge = '';
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            if ($status == 'Hadir') $badge = 'hadir';
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            elseif ($status == 'Izin') $badge = 'izin';
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            elseif ($status == 'Sakit') $badge = 'sakit';
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            else $badge = 'alfa';
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            echo '<td><span class="status-badge ' . $badge . '">' . htmlspecialchars($status) . '</span></td>';
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        } else {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            echo '<td>-</td>';
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ?></tr><?php endforeach; ?></tbody>
+            flex: 1;
+            margin-left: 250px;
+            padding: 100px 30px 40px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, #0E2F80 0%, #1e40af 100%);
+            padding: 30px;
+            border-radius: 16px;
+            color: white;
+            margin-bottom: 24px;
+        }
+
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .page-header p {
@@ -288,24 +297,29 @@ while ($row = mysqli_fetch_assoc($result)) {
             white-space: nowrap;
         }
 
-        .hadir {
+        .status-badge.hadir {
             background-color: #d1fae5;
             color: #065f46;
         }
 
-        .izin {
+        .status-badge.izin {
             background-color: #fed7aa;
             color: #92400e;
         }
 
-        .sakit {
+        .status-badge.sakit {
             background-color: #e9d5ff;
             color: #5b21b6;
         }
 
-        .alfa {
+        .status-badge.alfa {
             background-color: #fee2e2;
             color: #991b1b;
+        }
+
+        .status-badge.belum {
+            background-color: #f3f4f6;
+            color: #6b7280;
         }
 
         /* Week Headers Styling */
@@ -313,6 +327,19 @@ while ($row = mysqli_fetch_assoc($result)) {
             font-size: 11px;
             padding: 12px 8px !important;
             min-width: 70px;
+        }
+
+        /* No Data Message */
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .no-data i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            color: #d1d5db;
         }
 
         /* Responsive Design */
@@ -404,6 +431,31 @@ while ($row = mysqli_fetch_assoc($result)) {
         .table-wrapper::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
+
+        /* Export Button */
+        .export-section {
+            margin: 24px 0 0 0;
+            text-align: right;
+        }
+
+        .btn-export {
+            background: #0E2F80;
+            color: #fff;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+
+        .btn-export:hover {
+            background: #1e40af;
+        }
     </style>
 </head>
 
@@ -420,12 +472,13 @@ while ($row = mysqli_fetch_assoc($result)) {
                 Rekap Kehadiran Mahasiswa
             </h1>
             <p>Pantau kehadiran Anda di setiap pertemuan mata kuliah per semester</p>
+
             <!-- Export PDF Button -->
-            <div style="margin: 24px 0 0 0; text-align: right;">
-                <form method="get" action="../dosen/download_rekap_pdf.php" target="_blank">
+            <div class="export-section">
+                <form method="get" action="../download_rekap_pdf.php" target="_blank" style="display: inline;">
                     <input type="hidden" name="nim" value="<?= htmlspecialchars($nim) ?>">
                     <input type="hidden" name="tahun" value="2024-1">
-                    <button type="submit" style="background:#0E2F80;color:#fff;padding:10px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">
+                    <button type="submit" class="btn-export">
                         <i class="fa-solid fa-file-pdf"></i> Export PDF
                     </button>
                 </form>
@@ -440,10 +493,10 @@ while ($row = mysqli_fetch_assoc($result)) {
                         <i class="fa-solid fa-calendar"></i> Tahun Ajaran
                     </label>
                     <select id="tahun">
-                        <option value="2024-1" selected>2024 Ganjil (1)</option>
-                        <option value="2024-2">2024 Genap (2)</option>
-                        <option value="2023-2">2023 Genap (2)</option>
-                        <option value="2023-1">2023 Ganjil (1)</option>
+                        <option value="2024-1" selected>2024/2025 Ganjil</option>
+                        <option value="2024-2">2024/2025 Genap</option>
+                        <option value="2023-2">2023/2024 Genap</option>
+                        <option value="2023-1">2023/2024 Ganjil</option>
                     </select>
                 </div>
             </div>
@@ -475,90 +528,51 @@ while ($row = mysqli_fetch_assoc($result)) {
         <!-- Table Container -->
         <div class="table-container">
             <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="min-width: 100px;">KODE MK</th>
-                            <th class="kiri" style="min-width: 250px;">MATA KULIAH</th>
-                            <th style="min-width: 150px;">JENIS</th>
-                            <th class="week-header">W1</th>
-                            <th class="week-header">W2</th>
-                            <th class="week-header">W3</th>
-                            <th class="week-header">W4</th>
-                            <th class="week-header">W5</th>
-                            <th class="week-header">W6</th>
-                            <th class="week-header">W7</th>
-                            <th class="week-header">W8</th>
-                            <th class="week-header">W9</th>
-                            <th class="week-header">W10</th>
-                            <th class="week-header">W11</th>
-                            <th class="week-header">W12</th>
-                            <th class="week-header">W13</th>
-                            <th class="week-header">W14</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="kode-mk">IF101</td>
-                            <td class="kiri">Pengantar Proyek Perangkat Lunak</td>
-                            <td>Teori & Praktikum</td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge izin">Izin</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge sakit">Sakit</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                        </tr>
-
-                        <tr>
-                            <td class="kode-mk">IF102</td>
-                            <td class="kiri">Pengantar Teknologi Informasi</td>
-                            <td>Teori & Praktikum</td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge alfa">Alfa</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge sakit">Sakit</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge izin">Izin</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                        </tr>
-
-                        <tr>
-                            <td class="kode-mk">IF103</td>
-                            <td class="kiri">Dasar Pemrograman Web</td>
-                            <td>Teori & Praktikum</td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge izin">Izin</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge sakit">Sakit</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                            <td><span class="status-badge hadir">Hadir</span></td>
-                        </tr>
-                    </tbody>
-                </table>
+                <?php if (empty($rekap)): ?>
+                    <div class="no-data">
+                        <i class="fa-solid fa-inbox"></i>
+                        <p>Belum ada data kehadiran</p>
+                    </div>
+                <?php else: ?>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="min-width: 100px;">KODE MK</th>
+                                <th class="kiri" style="min-width: 250px;">MATA KULIAH</th>
+                                <th style="min-width: 150px;">JENIS</th>
+                                <?php for ($w = 1; $w <= 14; $w++): ?>
+                                    <th class="week-header">W<?= $w ?></th>
+                                <?php endfor; ?>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($rekap as $kode => $data): ?>
+                                <tr>
+                                    <td class="kode-mk"><?= htmlspecialchars($kode) ?></td>
+                                    <td class="kiri"><?= htmlspecialchars($data['nama_mk']) ?></td>
+                                    <td><?= htmlspecialchars($data['jenis']) ?></td>
+                                    <?php for ($w = 1; $w <= 14; $w++): ?>
+                                        <?php
+                                        $status = $data['kehadiran'][$w] ?? '-';
+                                        $badge = 'belum';
+                                        if ($status == 'Hadir') $badge = 'hadir';
+                                        elseif ($status == 'Izin') $badge = 'izin';
+                                        elseif ($status == 'Sakit') $badge = 'sakit';
+                                        elseif ($status == 'Alfa') $badge = 'alfa';
+                                        ?>
+                                        <td>
+                                            <?php if ($status != '-'): ?>
+                                                <span class="status-badge <?= $badge ?>"><?= htmlspecialchars($status) ?></span>
+                                            <?php else: ?>
+                                                <span class="status-badge belum">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    <?php endfor; ?>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
             </div>
         </div>
     </div>
