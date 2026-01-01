@@ -1,4 +1,3 @@
-<?php include 'navsideadmin.php'; ?>
 <!DOCTYPE html>
 <html lang="id">
 
@@ -8,16 +7,15 @@
   <title>Jadwal Ruangan - Admin Polibatam</title>
 
   <!-- Font Awesome -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 
   <!-- MDB UI Kit -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.4.2/mdb.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.4.2/mdb.min.css" rel="stylesheet">
 
   <style>
     body {
-      margin: 0;
+      background: #f7f7f7;
       font-family: 'Poppins', sans-serif;
-      background-color: #f7f7f7;
     }
 
     .content {
@@ -27,170 +25,193 @@
     }
 
     .table-container {
-      background-color: #fff;
+      background: #fff;
       border-radius: 16px;
       padding: 25px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-      max-width: 950px;
-      margin: 0 auto;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, .1);
+      max-width: 1000px;
+      margin: auto;
     }
 
     h3 {
-      color: #0E2F80;
+      color: #173a9b;
       font-weight: 600;
-      margin-bottom: 25px;
-    }
-
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 25px;
-      border-radius: 10px;
-      overflow: hidden;
     }
 
     thead tr {
-      background-color: #eaeaea;
-    }
-
-    th,
-    td {
-      padding: 12px 16px;
-      border-bottom: 1px solid #ddd;
-      color: #333;
+      background: #eaeaea;
     }
 
     th {
-      font-weight: 600;
+      font-size: 13px;
       text-transform: uppercase;
-      font-size: 14px;
     }
 
-    td {
-      font-size: 15px;
+    td,
+    th {
+      padding: 12px 16px;
+      border-bottom: 1px solid #ddd;
     }
 
     tr:hover {
-      background-color: #f9f9f9;
+      background: #f9f9f9;
     }
 
+    /* ===== WAKTU STACKED ===== */
+    .jadwal-waktu {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .jadwal-hari {
+      font-size: 13px;
+      font-weight: 600;
+      color: #173a9b;
+    }
+
+    .jadwal-jam {
+      font-size: 14px;
+      color: #333;
+    }
+
+    /* ===== AKSI ===== */
     .action-icons i {
-      margin: 0 5px;
       cursor: pointer;
-      color: #444;
-      transition: 0.2s;
+      margin: 0 6px;
+      font-size: 16px;
+      transition: .2s;
     }
 
-    .action-icons i:hover {
-      color: #0E2F80;
-      transform: scale(1.15);
+    .edit-icon {
+      color: #f4b400;
     }
 
-    .loading {
-      text-align: center;
-      padding: 20px;
-      color: #666;
+    .edit-icon:hover {
+      transform: scale(1.2);
+      color: #d39e00;
+    }
+
+    .delete-icon {
+      color: #e53935;
+    }
+
+    .delete-icon:hover {
+      transform: scale(1.2);
+      color: #b71c1c;
     }
 
     @media (max-width: 991px) {
       .content {
         margin-left: 0;
         margin-top: 120px;
-        padding: 20px;
-      }
-
-      .table-container {
-        max-width: 100%;
-        margin: 10px;
       }
     }
   </style>
 </head>
 
 <body>
-  <!-- Sidebar & Navbar -->
+
   <?php include 'navsideadmin.php'; ?>
 
   <div class="content">
     <div class="table-container">
-      <h3>Jadwal Ruangan</h3>
-      <button type="button" class="btn btn-primary" data-mdb-toggle="modal" data-mdb-target="#jadwalModal" onclick="resetForm()">
-        <i class="fa-solid fa-plus"></i> Tambah Jadwal
-      </button>
 
-      <table class="table" id="jadwalTable">
+      <!-- HEADER -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">Jadwal Ruangan</h3>
+        <button class="btn text-white" style="background:#173a9b"
+          data-mdb-toggle="modal"
+          data-mdb-target="#jadwalModal"
+          onclick="resetForm()">
+          <i class="fa fa-plus"></i> Tambah Jadwal
+        </button>
+      </div>
+
+      <!-- TABLE -->
+      <table class="table align-middle">
         <thead>
           <tr>
             <th>No</th>
             <th>Ruangan</th>
-            <th>Hari</th>
-            <th>Jam Mulai</th>
-            <th>Jam Selesai</th>
+            <th>Mata Kuliah</th>
+            <th>Waktu</th>
+            <th>Mahasiswa</th>
             <th>Aksi</th>
           </tr>
         </thead>
         <tbody id="tableBody">
           <tr>
-            <td colspan="6" class="loading">
-              <i class="fas fa-spinner fa-spin"></i> Memuat data...
+            <td colspan="6" class="text-center text-muted">
+              <i class="fa fa-spinner fa-spin"></i> Memuat data...
             </td>
           </tr>
         </tbody>
       </table>
+
     </div>
   </div>
 
-  <!-- Modal Tambah/Edit -->
-  <div class="modal fade" id="jadwalModal" tabindex="-1" aria-labelledby="jadwalModalLabel" aria-hidden="true">
+  <!-- MODAL -->
+  <div class="modal fade" id="jadwalModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content p-3">
         <div class="modal-header">
-          <h5 class="modal-title" id="jadwalModalLabel">Tambah Jadwal</h5>
-          <button type="button" class="btn-close" data-mdb-dismiss="modal"></button>
+          <h5 class="modal-title" id="modalTitle">Tambah Jadwal</h5>
+          <button class="btn-close" data-mdb-dismiss="modal"></button>
         </div>
 
-        <div class="modal-body">
-          <form id="formJadwal">
-            <input type="hidden" id="jadwalId">
+        <form id="formJadwal">
+          <div class="modal-body">
+            <input type="hidden" id="rowIndex">
 
-            <div class="mb-4">
-              <label class="form-label" for="ruangan">Ruangan</label>
-              <select class="form-select" id="ruangan" required>
-                <option value="">Pilih Ruangan</option>
+            <div class="mb-3">
+              <label class="form-label">Ruangan</label>
+              <input type="text" id="ruangan" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Mata Kuliah</label>
+              <input type="text" id="matkul" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Hari</label>
+              <select id="hari" class="form-select">
+                <option value="">Pilih Hari</option>
+                <option>Senin</option>
+                <option>Selasa</option>
+                <option>Rabu</option>
+                <option>Kamis</option>
+                <option>Jumat</option>
+                <option>Sabtu</option>
               </select>
             </div>
 
-            <div class="mb-4">
-              <label class="form-label" for="hari">Hari</label>
-              <select class="form-select" id="hari">
-                <option value="">Pilih Hari (Opsional)</option>
-                <option value="Senin">Senin</option>
-                <option value="Selasa">Selasa</option>
-                <option value="Rabu">Rabu</option>
-                <option value="Kamis">Kamis</option>
-                <option value="Jumat">Jumat</option>
-                <option value="Sabtu">Sabtu</option>
-              </select>
+            <div class="row">
+              <div class="col">
+                <label class="form-label">Jam Mulai</label>
+                <input type="time" id="jamMulai" class="form-control" required>
+              </div>
+              <div class="col">
+                <label class="form-label">Jam Selesai</label>
+                <input type="time" id="jamSelesai" class="form-control" required>
+              </div>
             </div>
 
-            <div class="mb-4">
-              <label class="form-label" for="jamMulai">Jam Mulai</label>
-              <input type="time" id="jamMulai" class="form-control" required />
+            <div class="mt-3">
+              <label class="form-label">Jumlah Mahasiswa</label>
+              <input type="number" id="jumlahMhs" class="form-control" min="1" required>
             </div>
+          </div>
 
-            <div class="mb-4">
-              <label class="form-label" for="jamSelesai">Jam Selesai</label>
-              <input type="time" id="jamSelesai" class="form-control" required />
-            </div>
-          </form>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-mdb-dismiss="modal">Batal</button>
-          <button type="submit" form="formJadwal" class="btn btn-primary">
-            <i class="fas fa-save"></i> Simpan
-          </button>
-        </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-mdb-dismiss="modal">Batal</button>
+            <button class="btn text-white" style="background:#173a9b">
+              <i class="fa fa-save"></i> Simpan
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -200,176 +221,94 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.4.2/mdb.min.js"></script>
 
   <script>
-    const API_URL = "jadwal_api.php";
     const tableBody = document.getElementById("tableBody");
     const form = document.getElementById("formJadwal");
-    const modalTitle = document.getElementById("jadwalModalLabel");
-    const jadwalModal = document.getElementById("jadwalModal");
-    let modalInstance;
+    let editIndex = null;
 
-    document.addEventListener("DOMContentLoaded", () => {
-      modalInstance = new mdb.Modal(jadwalModal);
-      loadRuangan();
-      loadJadwal();
-    });
-
-    // ✅ Load daftar ruangan
-    async function loadRuangan() {
-      try {
-        const res = await fetch(`${API_URL}?action=ruangan`);
-        const result = await res.json();
-
-        const select = document.getElementById("ruangan");
-        select.innerHTML = '<option value="">Pilih Ruangan</option>';
-
-        if (result.success) {
-          result.data.forEach(r => {
-            select.innerHTML += `<option value="${r.id_ruangan}">${r.nama_ruangan}</option>`;
-          });
-        } else {
-          select.innerHTML = '<option disabled>Tidak ada ruangan</option>';
-        }
-      } catch (err) {
-        console.error("Gagal load ruangan:", err);
-        showAlert("Gagal memuat data ruangan", "danger");
-      }
-    }
-
-    // ✅ Load daftar jadwal
-    async function loadJadwal() {
-      try {
-        const res = await fetch(`${API_URL}?action=list`);
-        const result = await res.json();
-
-        console.log("API Response:", result); // Debug
-
-        if (result.success) displayJadwal(result.data);
-        else tableBody.innerHTML = `<tr><td colspan="6" class="text-center">${result.message}</td></tr>`;
-      } catch (err) {
-        console.error("Gagal load jadwal:", err);
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Gagal memuat data</td></tr>';
-      }
-    }
-
-    function displayJadwal(data) {
-      if (!data.length) {
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Belum ada jadwal</td></tr>';
-        return;
-      }
-
-      tableBody.innerHTML = "";
-      data.forEach((j, i) => {
-        console.log("Row data:", j); // Debug
-        tableBody.innerHTML += `
-          <tr>
-            <td>${i + 1}</td>
-            <td>${j.nama_ruangan || 'N/A'}</td>
-            <td>${j.hari || '-'}</td>
-            <td>${j.jam_mulai || 'N/A'}</td>
-            <td>${j.jam_selesai || 'N/A'}</td>
-            <td class="action-icons">
-              <i class="fa-solid fa-pen-to-square" onclick="editJadwal(${j.id_jadwal})"></i>
-              <i class="fa-solid fa-trash" onclick="deleteJadwal(${j.id_jadwal})"></i>
-            </td>
-          </tr>`;
-      });
-    }
-
-    // ✅ Tambah / Update Jadwal
-    form.addEventListener("submit", async e => {
+    form.addEventListener("submit", e => {
       e.preventDefault();
 
-      const id = document.getElementById("jadwalId").value;
       const data = {
-        id_ruangan: document.getElementById("ruangan").value,
-        hari: document.getElementById("hari").value,
-        jam_mulai: document.getElementById("jamMulai").value,
-        jam_selesai: document.getElementById("jamSelesai").value,
+        ruangan: ruangan.value,
+        matkul: matkul.value,
+        hari: hari.value || "-",
+        jam: `${jamMulai.value} - ${jamSelesai.value}`,
+        mhs: jumlahMhs.value
       };
 
-      console.log("Sending data:", data); // Debug
-
-      const method = id ? "PUT" : "POST";
-      const url = id ? `${API_URL}?action=update&id=${id}` : `${API_URL}?action=create`;
-
-      try {
-        const res = await fetch(url, {
-          method,
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(data),
-        });
-        const result = await res.json();
-        console.log("Save response:", result); // Debug
-        showAlert(result.message, result.success ? "success" : "danger");
-        if (result.success) {
-          modalInstance.hide();
-          form.reset();
-          loadJadwal();
-        }
-      } catch (err) {
-        console.error("Error simpan jadwal:", err);
-        showAlert("Gagal menyimpan data", "danger");
+      if (editIndex !== null) {
+        updateRow(editIndex, data);
+      } else {
+        addRow(data);
       }
+
+      resetForm();
+      mdb.Modal.getInstance(document.getElementById("jadwalModal")).hide();
     });
 
-    // ✅ Edit Jadwal
-    async function editJadwal(id) {
-      try {
-        const res = await fetch(`${API_URL}?action=detail&id=${id}`);
-        const result = await res.json();
-        console.log("Edit data:", result); // Debug
-        if (result.success) {
-          const j = result.data;
-          document.getElementById("jadwalId").value = j.id_jadwal;
-          document.getElementById("ruangan").value = j.id_ruangan;
-          document.getElementById("hari").value = j.hari || '';
-          document.getElementById("jamMulai").value = j.jam_mulai;
-          document.getElementById("jamSelesai").value = j.jam_selesai;
-          modalTitle.textContent = "Edit Jadwal";
-          modalInstance.show();
-        }
-      } catch (err) {
-        console.error("Error edit:", err);
-        showAlert("Gagal memuat data jadwal", "danger");
+    function addRow(d) {
+      const row = tableBody.insertRow();
+      row.innerHTML = renderRow(tableBody.rows.length, d);
+    }
+
+    function updateRow(i, d) {
+      tableBody.rows[i].innerHTML = renderRow(i + 1, d);
+    }
+
+    function renderRow(no, d) {
+      return `
+    <td>${no}</td>
+    <td>${d.ruangan}</td>
+    <td>${d.matkul}</td>
+    <td>
+      <div class="jadwal-waktu">
+        <div class="jadwal-hari">${d.hari}</div>
+        <div class="jadwal-jam">${d.jam}</div>
+      </div>
+    </td>
+    <td>${d.mhs} mahasiswa</td>
+    <td class="action-icons">
+      <i class="fa fa-pen edit-icon" onclick="editRow(this)"></i>
+      <i class="fa fa-trash delete-icon" onclick="deleteRow(this)"></i>
+    </td>`;
+    }
+
+    function editRow(el) {
+      const row = el.closest("tr");
+      editIndex = row.rowIndex - 1;
+
+      ruangan.value = row.cells[1].innerText;
+      matkul.value = row.cells[2].innerText;
+      hari.value = row.querySelector(".jadwal-hari").innerText;
+
+      const jam = row.querySelector(".jadwal-jam").innerText.split(" - ");
+      jamMulai.value = jam[0];
+      jamSelesai.value = jam[1];
+
+      jumlahMhs.value = parseInt(row.cells[4].innerText);
+
+      document.getElementById("modalTitle").innerText = "Edit Jadwal";
+      new mdb.Modal(document.getElementById("jadwalModal")).show();
+    }
+
+    function deleteRow(el) {
+      if (confirm("Hapus jadwal ini?")) {
+        el.closest("tr").remove();
+        renumber();
       }
     }
 
-    // ✅ Delete Jadwal
-    async function deleteJadwal(id) {
-      if (!confirm("Yakin ingin menghapus jadwal ini?")) return;
-      try {
-        const res = await fetch(`${API_URL}?action=delete&id=${id}`, {
-          method: "DELETE"
-        });
-        const result = await res.json();
-        showAlert(result.message, result.success ? "success" : "danger");
-        if (result.success) loadJadwal();
-      } catch (err) {
-        console.error("Error hapus:", err);
-        showAlert("Gagal menghapus data", "danger");
-      }
+    function renumber() {
+      [...tableBody.rows].forEach((r, i) => r.cells[0].innerText = i + 1);
     }
 
-    // ✅ Reset Form
     function resetForm() {
       form.reset();
-      document.getElementById("jadwalId").value = "";
-      modalTitle.textContent = "Tambah Jadwal";
-    }
-
-    // ✅ Alert notifikasi
-    function showAlert(message, type) {
-      const alert = document.createElement("div");
-      alert.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
-      alert.style.zIndex = "9999";
-      alert.innerHTML = `${message}
-        <button type="button" class="btn-close" data-mdb-dismiss="alert"></button>`;
-      document.body.appendChild(alert);
-      setTimeout(() => alert.remove(), 3000);
+      editIndex = null;
+      document.getElementById("modalTitle").innerText = "Tambah Jadwal";
     }
   </script>
+
 </body>
 
 </html>
